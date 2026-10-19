@@ -1,0 +1,58 @@
+# GitHub Actions：Windows bundled 安装包试产（黔算）
+# 目的：跑一次 `dist:bundled`，产出 *.msix 供真机验证与包体测量。
+# 触发：手动（Actions 页点 Run workflow）。公开仓库免费额度足够。
+# 审查记录：豆包席 9 条已修（Node26/HERMES_PYTHON/release 目录/msix 目标/去 uv/UTF8/大规格机/瘦安装/去 CSC）。
+
+name: windows-bundled-build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest-32-core
+    timeout-minutes: 900
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # payload 脚本要求 HERMES_PYTHON 指向本机解释器；内嵌用户的 Python 由 native.py 自行下载
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # engines: ^22.22||^24.11||>=26 且 engine-strict=true；pm/lock 钉 v26.7.0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+
+      - name: Export HERMES_PYTHON
+        shell: pwsh
+        run: echo "HERMES_PYTHON=$(python -c 'import sys;print(sys.executable)')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install dependencies
+        run: npm ci --workspace apps/desktop --include-workspace-root --include=dev
+
+      - name: Build bundled (payload + electron dist)
+        working-directory: apps/desktop
+        run: npm run dist:bundled
+
+      # win.target=msix，产物在 directories.output='release'
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-out | Out-Null
+          Copy-Item apps/desktop/release/*.msix dist-out/ -ErrorAction SilentlyContinue
+          Get-ChildItem apps/desktop/release | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}} | Format-Table
+          Get-ChildItem dist-out | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}} | Format-Table
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: QianSuan-windows-bundled
+          path: dist-out/*
+          if-no-files-found: error
