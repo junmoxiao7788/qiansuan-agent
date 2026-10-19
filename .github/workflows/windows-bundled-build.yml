@@ -1,0 +1,65 @@
+# GitHub Actions：Windows bundled 安装包试产（黔算）
+# 修正史：豆包席 9 条；runner 免费规格；Defender 排除（抄上游 desktop-bundled-release）+ git 长路径
+name: windows-bundled-build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 240
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Exclude build paths from Defender scanning
+        shell: powershell
+        run: |
+          $paths = @($env:GITHUB_WORKSPACE, $env:RUNNER_TEMP, (npm config get cache))
+          foreach ($p in $paths) {
+            try { Add-MpPreference -ExclusionPath $p; Write-Host "excluded $p" }
+            catch { Write-Host "skip: $($_.Exception.Message)" }
+          }
+          try { Set-MpPreference -DisableRealtimeMonitoring $true } catch { Write-Host "defender off failed: continue" }
+
+      - name: Enable git long paths
+        shell: pwsh
+        run: git config --system core.longpaths true
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+
+      - name: Export HERMES_PYTHON
+        shell: pwsh
+        run: echo "HERMES_PYTHON=$(python -c 'import sys;print(sys.executable)')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install dependencies
+        run: npm ci --workspace apps/desktop --include-workspace-root --include=dev
+
+      - name: Build bundled (payload + electron dist)
+        working-directory: apps/desktop
+        run: npm run dist:bundled
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist-out | Out-Null
+          Copy-Item apps/desktop/release/*.msix dist-out/ -ErrorAction SilentlyContinue
+          Get-ChildItem apps/desktop/release | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}} | Format-Table
+          Get-ChildItem dist-out | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}} | Format-Table
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: QianSuan-windows-bundled
+          path: dist-out/*
+          if-no-files-found: error
