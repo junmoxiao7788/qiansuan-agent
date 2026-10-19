@@ -74,6 +74,47 @@ def _uncovered(root: Path) -> tuple[list[Path], int]:
     return missing, unparseable
 
 
+def _diagnose_uncovered(root: Path, python: Path, missing: list[Path]) -> None:
+    """Emit on-runway evidence when coverage fails; never changes the result."""
+    from importlib.util import cache_from_source
+    import sys as _sys
+    print(f"DEBUG outer Python {_sys.version_info}, cache_tag={_sys.implementation.cache_tag}")
+    try:
+        staged_tag = subprocess.check_output(
+            [str(python), "-I", "-c", "import sys; print(sys.implementation.cache_tag)"],
+            text=True, timeout=30).strip()
+    except Exception as exc:  # pragma: no cover - diagnostic only
+        staged_tag = f"<error: {exc}>"
+    print(f"DEBUG staged Python {python}, cache_tag={staged_tag}")
+    if not missing:
+        return
+    for path in missing[:3]:
+        cache_dir = path.with_name("__pycache__")
+        print(f"DEBUG missing source: {path}")
+        print(f"DEBUG expected pyc (outer tag): {Path(cache_from_source(path))}")
+        if cache_dir.is_dir():
+            files = [c.name for c in cache_dir.iterdir() if c.is_file()]
+            print(f"DEBUG __pycache__ contents: {files}")
+        else:
+            print("DEBUG __pycache__ dir does not exist")
+    # Re-run compileall without -q for the first source to capture its real output.
+    if missing:
+        sample_dir = missing[0].parent
+        print(f"DEBUG re-running compileall on {sample_dir}")
+        try:
+            result = subprocess.run(
+                [str(python), "-I", "-m", "compileall",
+                 "--invalidation-mode", "unchecked-hash", str(sample_dir)],
+                capture_output=True, text=True, timeout=60)
+            print(f"DEBUG compileall returncode={result.returncode}")
+            if result.stdout:
+                print("DEBUG compileall stdout:\n" + result.stdout[:2000])
+            if result.stderr:
+                print("DEBUG compileall stderr:\n" + result.stderr[:2000])
+        except Exception as exc:  # pragma: no cover - diagnostic only
+            print(f"DEBUG compileall re-run failed: {exc}")
+
+
 def bake_bytecode(root: Path, python: Path) -> dict:
     """Compile every payload module with the staged interpreter and seal the
     caches read-only. ``root`` is the payload root; ``python`` MUST be the
@@ -90,6 +131,7 @@ def bake_bytecode(root: Path, python: Path) -> dict:
             check=True, timeout=30 * 60, stdin=subprocess.DEVNULL)
         missing, unparseable = _uncovered(source_root)
         if missing:
+            _diagnose_uncovered(source_root, python, missing)
             sample = ", ".join(str(m.relative_to(root)) for m in missing[:5])
             raise ValueError(f"{len(missing)} payload modules have no bytecode pyc "
                              f"({sample}…): a fresh install would cold-compile them "
