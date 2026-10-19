@@ -53,15 +53,26 @@ def _import_roots(root: Path) -> list[Path]:
     return roots
 
 
-def _uncovered(root: Path) -> tuple[list[Path], int]:
-    """Parseable .py files without a pyc, and unparseable fixtures skipped."""
+def _uncovered(root: Path, cache_tag: str | None = None) -> tuple[list[Path], int]:
+    """Parseable .py files without a pyc, and unparseable fixtures skipped.
+
+    ``cache_tag`` must be the cache tag of the interpreter that ran
+    ``compileall`` (e.g. ``sys.implementation.cache_tag``). When omitted it
+    defaults to the running interpreter's tag for tests and local checks.
+    Passing the staged tag is essential when the staging driver runs under a
+    different Python than the payload's own interpreter.
+    """
     from importlib.util import cache_from_source
     missing: list[Path] = []
     unparseable = 0
     for path in root.rglob("*.py"):
         if "__pycache__" in path.parts:
             continue
-        if Path(cache_from_source(path)).exists():
+        if cache_tag is None:
+            expected = Path(cache_from_source(path))
+        else:
+            expected = path.parent / "__pycache__" / f"{path.stem}.{cache_tag}.pyc"
+        if expected.exists():
             continue
         try:
             compile(path.read_bytes(), str(path), "exec")
@@ -123,13 +134,16 @@ def bake_bytecode(root: Path, python: Path) -> dict:
     python = Path(python).resolve()
     if not python.is_file():
         raise FileNotFoundError(f"staged interpreter is missing: {python}")
+    staged_tag = subprocess.check_output(
+        [str(python), "-I", "-c", "import sys; print(sys.implementation.cache_tag)"],
+        text=True, timeout=30).strip()
     total = 0
     for source_root in _import_roots(root):
         subprocess.run(
             [str(python), "-I", "-m", "compileall", "-q",
              "--invalidation-mode", "unchecked-hash", str(source_root)],
             check=True, timeout=30 * 60, stdin=subprocess.DEVNULL)
-        missing, unparseable = _uncovered(source_root)
+        missing, unparseable = _uncovered(source_root, cache_tag=staged_tag)
         if missing:
             _diagnose_uncovered(source_root, python, missing)
             sample = ", ".join(str(m.relative_to(root)) for m in missing[:5])
