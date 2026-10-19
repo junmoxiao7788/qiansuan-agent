@@ -121,7 +121,8 @@ def stage_native(args) -> int:
                "XDG_CACHE_HOME": str(Path(work) / "cache"),
                "XDG_CONFIG_HOME": str(Path(work) / "config"),
                "UV_CACHE_DIR": str(cache),
-               "PYTHONPATH": os.pathsep.join([str(root), *filter(None, sys.path)])}
+               "PYTHONPATH": os.pathsep.join(
+                   [str(root)] + [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p])}
         command = [sys.executable, "-B", "-m", "scripts.bundles.native", "--out", str(out),
                    "--ref", args.ref or "HEAD", "--source", str(root)]
         for name, product in getattr(args, "frontends", {}).items():
