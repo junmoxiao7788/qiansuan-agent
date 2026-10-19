@@ -1,7 +1,7 @@
 # GitHub Actions：Windows bundled 安装包试产（黔算）
 # 目的：跑一次 `dist:bundled`，产出 *.msix 供真机验证与包体测量。
 # 触发：手动（Actions 页点 Run workflow）。公开仓库免费额度足够。
-# 审查记录：豆包席 9 条已修（Node26/HERMES_PYTHON/release 目录/msix 目标/去 uv/UTF8/大规格机/瘦安装/去 CSC）。
+# 审查记录：豆包席 9 条已修；另修：32-core 大规格机个人账号不可用（实证排队 45min 不分配），改 windows-latest。
 
 name: windows-bundled-build
 
@@ -10,8 +10,8 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest-32-core
-    timeout-minutes: 900
+    runs-on: windows-latest   # 32-core 大规格机个人账号不可用；免费标准机兜底
+    timeout-minutes: 240
     env:
       PYTHONUTF8: '1'
     steps:
