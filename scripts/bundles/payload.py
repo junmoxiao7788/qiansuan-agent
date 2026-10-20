@@ -134,10 +134,38 @@ def seal_pm_runtime(root: Path, python: Path) -> dict:
     return marker
 
 
+def relativize_venv_home(root: Path) -> bool:
+    """Point the dependency venv's `home` at the packaged interpreter.
+
+    uv writes the build machine's absolute base-interpreter path into
+    `venv/pyvenv.cfg` (`home = D:\\a\\...` on a Windows runner). A copied
+    payload then carries that path to every user machine, where the venv's
+    `python.exe` cannot find its DLLs and exits silently — the desktop then
+    reports "backend died before its identity could be recorded" on every
+    launch. Relativizing `home` (and dropping the other absolute keys uv
+    writes) is what makes the payload actually portable.
+    """
+    root = root.resolve()
+    cfg_path = root / "venv/pyvenv.cfg"
+    if not cfg_path.is_file():
+        return False
+    runtimes = sorted(path for path in (root / "tools").glob("python-*") if path.is_dir())
+    if len(runtimes) != 1:
+        raise ValueError(f"packaged interpreter missing or ambiguous: {runtimes}")
+    home = Path(os.path.relpath(runtimes[0], cfg_path.parent)).as_posix()
+    lines = cfg_path.read_text(encoding="utf-8-sig").splitlines()
+    lines = [line for line in lines if line.partition("=")[0].strip() not in
+             {"home", "executable", "base-executable", "base-prefix", "base-exec-prefix", "command"}]
+    cfg_path.write_text(f"home = {home}\n" + "\n".join(lines) + "\n", encoding="utf-8")
+    _share_metadata(cfg_path)
+    return True
+
+
 def relativize_links(root: Path) -> int:
     """Only dependency-venv links move; framework links belong to codesign."""
     root = root.resolve()
     _discard_build_locks(root)
+    relativize_venv_home(root)
     return sum(_relativize_bin_links(root, root / name / "bin") for name in ("venv", "pm-runtime"))
 
 
