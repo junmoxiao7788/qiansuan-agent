@@ -4,15 +4,17 @@ import { normalize } from '@/lib/text'
 
 /** Compact labels for chrome where space is tight (pill, picker rows). Menus
  *  and settings use the translated `shell.modelOptions` strings instead. */
+// 黔算智能体：这些短标签会直接印在输入框右下角的 pill 上（"推理强度: Med"），
+// 所以跟着界面语言走，不再保留上游英文缩写。
 const SHORT_LABELS: Record<string, string> = {
-  none: 'Off',
-  minimal: 'Min',
-  low: 'Low',
-  medium: 'Med',
-  high: 'High',
-  xhigh: 'XHigh',
-  max: 'Max',
-  ultra: 'Ultra'
+  none: '关闭',
+  minimal: '最少',
+  low: '低',
+  medium: '中',
+  high: '高',
+  xhigh: '较高',
+  max: '最高',
+  ultra: '极强'
 }
 
 /**

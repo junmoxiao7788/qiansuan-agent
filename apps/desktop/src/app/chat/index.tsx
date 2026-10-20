@@ -737,7 +737,8 @@ const ChatViewContent = memo(function ChatViewContent({
       },
       tools: {
         enabled: true,
-        label: 'Add context',
+        // 黔算智能体：上游这里是硬编码英文 'Add context'，空聊天页第一个按钮就是它，直接中文化。
+        label: '添加上下文',
         suggestions: contextSuggestions
       },
       voice: {

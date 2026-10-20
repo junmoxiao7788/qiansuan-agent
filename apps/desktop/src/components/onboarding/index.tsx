@@ -84,7 +84,17 @@ export interface ApiKeyOption {
 
 // Curated order mirrors CANONICAL_PROVIDERS: Fireworks sits #2 overall (after
 // Nous Portal OAuth), ahead of OpenRouter and the rest of the key catalog.
+// 黔算智能体：产品主线 = 自定义 API 直连中转站，必须排在**第一位**并作首启默认项
+// （内测客户第一次看到的第一个可选项就得是它，排在英文大厂后面等于把主路径藏起来）。
 const API_KEY_OPTIONS: ApiKeyOption[] = [
+  {
+    id: 'local',
+    name: '自定义 API（OpenAI 兼容）',
+    envKey: 'OPENAI_BASE_URL',
+    // 中转站注册页地址待产品方提供后填入；为空时隐藏"获取密钥"链接。
+    docsUrl: '',
+    placeholder: 'https://api.example.com/v1'
+  },
   {
     id: 'fireworks',
     name: 'Fireworks AI',
@@ -114,15 +124,6 @@ const API_KEY_OPTIONS: ApiKeyOption[] = [
     name: 'xAI Grok',
     envKey: 'XAI_API_KEY',
     docsUrl: 'https://console.x.ai/'
-  },
-  {
-    id: 'local',
-    // 黔算智能体：产品主线 = 自定义 API 直连中转站，置顶并作首启默认项。
-    name: '自定义 API（OpenAI 兼容）',
-    envKey: 'OPENAI_BASE_URL',
-    // 中转站注册页地址待产品方提供后填入；为空时隐藏"获取密钥"链接。
-    docsUrl: '',
-    placeholder: 'https://api.example.com/v1'
   }
 ]
 

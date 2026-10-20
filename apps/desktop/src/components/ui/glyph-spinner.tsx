@@ -70,7 +70,7 @@ interface GlyphSpinnerProps {
  * to centre the single glyph.
  */
 export function GlyphSpinner({
-  ariaLabel = 'Loading',
+  ariaLabel = '加载中',
   className,
   paused = false,
   spinner = 'braille'

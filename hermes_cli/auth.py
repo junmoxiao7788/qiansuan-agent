@@ -1717,10 +1717,11 @@ def resolve_provider(
         pass  # boto3 not installed
     from hermes_constants import display_hermes_home
     raise AuthError(
-        "Hermes is not connected to any AI provider yet. Run `hermes model` to pick one (the free "
-        "Nous tier needs no API key), type `/login` in chat, or add a key with "
-        f"`hermes auth add <provider>`. (Advanced: put an API key such as OPENROUTER_API_KEY in "
-        f"{display_hermes_home()}/.env.)",
+        # 黔算智能体：这条会**原样弹给终端用户**（首启向导会把 message 直接贴出来），
+        # 所以必须是中文人话，且指向本产品的主路径（自定义 API 填地址+密钥）。
+        "黔算智能体还没有连接任何模型服务。请在「自定义 API」里填入接口地址和密钥，"
+        "或在对话框输入 `/login` 选择提供方，或用 `hermes auth add <provider>` 添加密钥。"
+        f"（高级用法：把 OPENROUTER_API_KEY 之类的密钥写进 {display_hermes_home()}/.env。）",
         code="no_provider_configured")
 
 
