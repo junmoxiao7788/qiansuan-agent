@@ -40,8 +40,11 @@ export function channelBuildRequest(env = process.env) {
 // what Windows compares against the package manifest publisher at install.
 // Mirrored from electron-builder.config.cjs so the .appinstaller and the
 // manifest can never drift.
+// 黔算智能体：非商店（内测分发）包的身份就是我们的，不能沿用上游 Nous。
+// 这个字符串必须与签名证书 Subject 完全一致，否则用户侧 Add-AppxPackage 报
+// 0x800B0100/签名不受信任；也是「应用和功能」里显示的发布者来源。
 export const OUT_OF_STORE_PUBLISHER =
-  'CN=Nous Research Inc., O=Nous Research Inc., L=Austin, S=Texas, C=US'
+  'CN=QianSuan, O=QianSuan, C=CN'
 
 // Content-Type for MSIX / App Installer artifacts. Without the right MIME the
 // browser cannot hand a clicked .appinstaller / .msixbundle to the OS App

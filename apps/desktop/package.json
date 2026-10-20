@@ -3,7 +3,7 @@
   "productName": "QianSuan",
   "private": true,
   "version": "0.0.0",
-  "description": "Native desktop shell for Hermes Agent.",
+  "description": "黔算智能体 —— 中文桌面 AI 助手（轻量客户端，连接你自己的模型服务）。",
   "author": "Nous Research",
   "repository": {
     "type": "git",
